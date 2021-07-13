@@ -1,97 +1,39 @@
-// Include the cluster module
-var cluster = require('cluster');
+var port = process.env.PORT || 3000,
+    http = require('http'),
+    fs = require('fs'),
+    html = fs.readFileSync('index.html');
 
-// Code to run if we're in the master process
-if (cluster.isMaster) {
+var log = function(entry) {
+    fs.appendFileSync('/tmp/sample-app.log', new Date().toISOString() + ' - ' + entry + '\n');
+};
 
-    // Count the machine's CPUs
-    var cpuCount = require('os').cpus().length;
+var server = http.createServer(function (req, res) {
+    if (req.method === 'POST') {
+        var body = '';
 
-    // Create a worker for each CPU
-    for (var i = 0; i < cpuCount; i += 1) {
-        cluster.fork();
-    }
-
-    // Listen for terminating workers
-    cluster.on('exit', function (worker) {
-
-        // Replace the terminated workers
-        console.log('Worker ' + worker.id + ' died :(');
-        cluster.fork();
-
-    });
-
-// Code to run if we're in a worker process
-} else {
-    var AWS = require('aws-sdk');
-    var express = require('express');
-    var bodyParser = require('body-parser');
-
-    AWS.config.region = process.env.REGION
-
-    var sns = new AWS.SNS();
-    var ddb = new AWS.DynamoDB();
-
-    var ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
-    var snsTopic =  process.env.NEW_SIGNUP_TOPIC;
-    var app = express();
-
-    app.set('view engine', 'ejs');
-    app.set('views', __dirname + '/views');
-    app.use(bodyParser.urlencoded({extended:false}));
-
-    app.get('/', function(req, res) {
-        res.render('index', {
-            static_path: 'static',
-            theme: process.env.THEME || 'flatly',
-            flask_debug: process.env.FLASK_DEBUG || 'false'
+        req.on('data', function(chunk) {
+            body += chunk;
         });
-    });
 
-    app.post('/signup', function(req, res) {
-        var item = {
-            'email': {'S': req.body.email},
-            'name': {'S': req.body.name},
-            'preview': {'S': req.body.previewAccess},
-            'theme': {'S': req.body.theme}
-        };
-
-        ddb.putItem({
-            'TableName': ddbTable,
-            'Item': item,
-            'Expected': { email: { Exists: false } }        
-        }, function(err, data) {
-            if (err) {
-                var returnStatus = 500;
-
-                if (err.code === 'ConditionalCheckFailedException') {
-                    returnStatus = 409;
-                }
-
-                res.status(returnStatus).end();
-                console.log('DDB Error: ' + err);
-            } else {
-                sns.publish({
-                    'Message': 'Name: ' + req.body.name + "\r\nEmail: " + req.body.email 
-                                        + "\r\nPreviewAccess: " + req.body.previewAccess 
-                                        + "\r\nTheme: " + req.body.theme,
-                    'Subject': 'New user sign up!!!',
-                    'TopicArn': snsTopic
-                }, function(err, data) {
-                    if (err) {
-                        res.status(500).end();
-                        console.log('SNS Error: ' + err);
-                    } else {
-                        res.status(201).end();
-                    }
-                });            
+        req.on('end', function() {
+            if (req.url === '/') {
+                log('Received message: ' + body);
+            } else if (req.url = '/scheduled') {
+                log('Received task ' + req.headers['x-aws-sqsd-taskname'] + ' scheduled at ' + req.headers['x-aws-sqsd-scheduled-at']);
             }
+
+            res.writeHead(200, 'OK', {'Content-Type': 'text/plain'});
+            res.end();
         });
-    });
+    } else {
+        res.writeHead(200);
+        res.write(html);
+        res.end();
+    }
+});
 
-    var port = process.env.PORT || 3000;
+// Listen on port 3000, IP defaults to 127.0.0.1
+server.listen(port);
 
-    var server = app.listen(port, function () {
-        console.log('Server running at http://127.0.0.1:' + port + '/');
-    });
-}
+// Put a friendly message on the terminal
+console.log('Server running at http://127.0.0.1:' + port + '/');
