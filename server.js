@@ -5,8 +5,10 @@ app.get('/', (req, res) => {
     res.send("Welcome to the Hone Page")
 });
 
-const port = process.env.port || 3000;
-app.listen(port, () => {
-    console.log("Hello")
+var port = process.env.PORT || 3000;
+
+var server = app.listen(port, function () {
+    console.log('Server running at http://127.0.0.1:' + port + '/');
 });
+}
 
