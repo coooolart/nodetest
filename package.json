@@ -1,27 +1,14 @@
 {
-  "name": "food4allkids",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "name": "Elastic-Beanstalk-Sample-App",
+  "version": "0.0.1",
+  "private": true,
   "dependencies": {
-    "express": "^4.17.1",
-    "fs": "0.0.1-security",
-    "mysql": "^2.18.1",
-    "nodemon": "^2.0.12",
-    "path": "^0.12.7"
-  },
-  "engines": {
-    "node": ">=10.0.0",
-    "npm": ">=6.0.0"
+    "ejs": "latest",
+    "aws-sdk": "latest",
+    "express": "latest",
+    "body-parser": "latest"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node app.js"
   }
-  
 }
